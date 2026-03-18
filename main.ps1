@@ -434,21 +434,21 @@ function AutologonExeCheck($PSScriptRoot) {
 }
 
 function CheckForUpdates($MyInvocation) {
-   $CurrentVersion = "1.0.1"
-   $InstallDir     = Split-Path -Parent $MyInvocation.MyCommand.Path
-   $ScriptPath     = $MyInvocation.MyCommand.Path
+   $CurrentVersion = "1.0.0"
+   $InstallDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+   $ScriptPath = $MyInvocation.MyCommand.Path
    Write-Host "Checking for updates..." -ForegroundColor Cyan
    try {
       $Release = Invoke-RestMethod "https://api.github.com/repos/Casbian/CoreForge/releases/latest"
       $LatestVersion = $Release.tag_name.TrimStart("v")
       if ([version]$LatestVersion -gt [version]$CurrentVersion) {
          Write-Host "Update available: $LatestVersion (current: $CurrentVersion)" -ForegroundColor Yellow
-         $Asset = $Release.assets | Where-Object { $_.name -like "*.zip" } | Select-Object -First 1
-            if ($Asset) {
-               $TempZip    = "$env:TEMP\CoreForge_update.zip"
+         $ZipUrl = $Release.zipball_url
+            if ($ZipUrl) {
+               $TempZip = "$env:TEMP\CoreForge_update.zip"
                $TempExtract = "$env:TEMP\CoreForge_update"
                Write-Host "Downloading update..." -ForegroundColor Cyan
-               Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $TempZip
+               Invoke-WebRequest -Uri $ZipUrl -OutFile $TempZip
                Write-Host "Extracting..." -ForegroundColor Cyan
                if (Test-Path $TempExtract) {
                   Remove-Item $TempExtract -Recurse -Force
@@ -456,6 +456,7 @@ function CheckForUpdates($MyInvocation) {
                Expand-Archive -Path $TempZip -DestinationPath $TempExtract
                Write-Host "Applying update..." -ForegroundColor Green
                $UpdateScript = @"
+`$ScriptPath = $ScriptPath
 Get-ChildItem -Path "$InstallDir" -Recurse | Remove-Item -Recurse -Force
 `$Source = Get-ChildItem "$TempExtract" | Where-Object { `$_.PSIsContainer } | Select-Object -First 1
 if (`$Source) {
@@ -463,7 +464,7 @@ if (`$Source) {
 } else {
     Copy-Item "$TempExtract\*" "$InstallDir" -Recurse -Force
 }
-Remove-Item "$TempZip"     -Force -ErrorAction SilentlyContinue
+Remove-Item "$TempZip" -Force -ErrorAction SilentlyContinue
 Remove-Item "$TempExtract" -Recurse -Force -ErrorAction SilentlyContinue
 Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
 "@
