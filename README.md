@@ -5,8 +5,8 @@
 <br>
 <p align="center">
   Manage and Run updates on Windows <br>
-  🚧 Work in Progress <br>
 </p>
+<br><br>
 <p align="center">
   <img src="https://img.shields.io/badge/status-work%20in%20progress-orange?style=flat-square" />
   <img src="https://img.shields.io/badge/platform-Windows-blue?style=flat-square&logo=windows" />
