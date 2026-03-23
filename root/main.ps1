@@ -4,648 +4,35 @@
       exit
    }
    catch {
+      if ($_.Exception.Message -match 'cancel') {
+            exit
+      }
       Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
       exit
-   } 
+   }
+   exit
 }
 if ($PSVersionTable.PSVersion.Major -lt 7) {
    winget install --id Microsoft.PowerShell --uninstall-previous --accept-package-agreements --accept-source-agreements --silent --force
    Start-Process pwsh -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
    exit
 }
-#======================================#
-# Add Types
-#======================================#
+
+
+Import-Module "$PSScriptRoot\file\file.psm1"
+Import-Module "$PSScriptRoot\main\main.psm1"
+Import-Module "$PSScriptRoot\richtextbox\richtextbox.psm1"
+Import-Module "$PSScriptRoot\thread\thread.psm1" 
+Import-Module "$PSScriptRoot\update\update.psm1"
+Import-Module "$PSScriptRoot\window\window.psm1"
+
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
-#======================================#
-# UI Functions
-#======================================#
-function StartUpLogo-Show(){
-   $Width = 282
-   $Height = 282
-   $Root = New-Object System.Windows.Window
-   $Root.WindowStyle = "None"
-   $Root.AllowsTransparency = $true
-   $Root.Background = "Transparent"
-   $Root.ResizeMode = "NoResize"
-   $Root.Topmost = $true
-   $Root.Width = $Width
-   $Root.Height = $Height
-   $ScreenParameter = [System.Windows.SystemParameters]
-   $Root.Left = ($ScreenParameter::PrimaryScreenWidth - $Width) / 2
-   $Root.Top = ($ScreenParameter::PrimaryScreenHeight * 0.45) - ($Height / 2)
-   $Logo = New-Object System.Windows.Controls.Image
-   $Logo.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\LogoBig.png")))
-   $Logo.Width = $Width
-   $Logo.Height = $Height
-   $Root.Content = $Logo
-   $Root.Show()
-   return $Root
-}
-function SystemWindow-Home(){
-   $Width = 900
-   $Height = 500
-   $Root = New-Object System.Windows.Window
-   $Root.WindowStyle = "None"
-   $Root.AllowsTransparency = $true
-   $Root.Background = "Transparent"
-   $Root.ResizeMode = "NoResize"
-   $Root.Topmost = $false
-   $Root.Width = $Width
-   $Root.Height = $Height
-   $ScreenParameter = [System.Windows.SystemParameters]
-   $Root.Left = ($ScreenParameter::PrimaryScreenWidth - $Width) / 2
-   $Root.Top = ($ScreenParameter::PrimaryScreenHeight * 0.45) - ($Height / 2)
-   $Root.Icon = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Icon.ico")))
-   $SystemWindowsControlsCanvas = New-Object System.Windows.Controls.Canvas
-   
-   $Background = New-Object System.Windows.Controls.Image
-   $Background.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Background.png")))
-   $Background.Width = $Width
-   $Background.Height = $Height
-   [System.Windows.Controls.Canvas]::SetLeft($Background, 0)
-   [System.Windows.Controls.Canvas]::SetTop($Background, 0)
-   $SystemWindowsControlsCanvas.Children.Add($Background) | Out-Null
 
-   $Logo = New-Object System.Windows.Controls.Image
-   $Logo.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\LogoSmallWhite.png")))
-   $Logo.Width = 44
-   $Logo.Height = 44
-   [System.Windows.Controls.Canvas]::SetLeft($Logo, 0)
-   [System.Windows.Controls.Canvas]::SetTop($Logo, 5)
-   $SystemWindowsControlsCanvas.Children.Add($Logo) | Out-Null
 
-   $DragBarImage = New-Object System.Windows.Controls.Image
-   $DragBarImage.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\DragBar.png")))
-   $DragBarImage.Width = 900
-   $DragBarImage.Height = 40
-   [System.Windows.Controls.Canvas]::SetLeft($DragBarImage, 0)
-   [System.Windows.Controls.Canvas]::SetTop($DragBarImage, 0)
-   $DragBarImage.Add_MouseLeftButtonDown({
-      [System.Windows.Window]::GetWindow($args[0]).DragMove()
-   })
-   $SystemWindowsControlsCanvas.Children.Add($DragBarImage) | Out-Null
-
-   $CloseButton = @{
-      Button = New-Object System.Windows.Controls.Image
-      Icon   = New-Object System.Windows.Controls.Image
-   }
-   $CloseButton.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
-   $CloseButton.Button.Width = 30
-   $CloseButton.Button.Height = 30
-   [System.Windows.Controls.Canvas]::SetLeft($CloseButton.Button, 860)
-   [System.Windows.Controls.Canvas]::SetTop($CloseButton.Button, 10)
-   $CloseButton.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Close.png")))
-   $CloseButton.Icon.Width = 22
-   $CloseButton.Icon.Height = 22
-   [System.Windows.Controls.Canvas]::SetLeft($CloseButton.Icon, 864)
-   [System.Windows.Controls.Canvas]::SetTop($CloseButton.Icon, 14)
-   $CloseButton.Button.Tag = $CloseButton
-   $CloseButton.Icon.Tag   = $CloseButton
-   $CloseButton.Button.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\CloseHover.png")))
-   })
-   $CloseButton.Button.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Close.png")))
-   })
-   $CloseButton.Icon.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\CloseHover.png")))
-   })
-   $CloseButton.Icon.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Close.png")))
-   })
-   $CloseButton.Button.Add_MouseLeftButtonDown({
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\ClosePressed.png")))
-      $this.CaptureMouse() | Out-Null
-   })
-   $CloseButton.Button.Add_MouseLeftButtonUp({
-      $this.ReleaseMouseCapture()
-      if ($this.IsMouseOver) {
-         [System.Windows.Window]::GetWindow($this).Close()
-      } else {
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Close.png")))
-    }
-   })
-   $CloseButton.Icon.Add_MouseLeftButtonDown({
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\ClosePressed.png")))
-      $this.CaptureMouse() | Out-Null
-   })
-   $CloseButton.Icon.Add_MouseLeftButtonUp({
-      $this.ReleaseMouseCapture()
-      if ($this.IsMouseOver) {
-         [System.Windows.Window]::GetWindow($this).Close()
-      } else {
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Close.png")))
-    }
-   })
-   $SystemWindowsControlsCanvas.Children.Add($CloseButton.Button) | Out-Null
-   $SystemWindowsControlsCanvas.Children.Add($CloseButton.Icon)   | Out-Null
-
-   $SettingsButton = @{
-      Button = New-Object System.Windows.Controls.Image
-      Icon   = New-Object System.Windows.Controls.Image
-   }
-   $SettingsButton.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
-   $SettingsButton.Button.Width = 30
-   $SettingsButton.Button.Height = 30
-   [System.Windows.Controls.Canvas]::SetLeft($SettingsButton.Button, 820)
-   [System.Windows.Controls.Canvas]::SetTop($SettingsButton.Button, 10)
-   $SettingsButton.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Settings.png")))
-   $SettingsButton.Icon.Width = 18
-   $SettingsButton.Icon.Height = 18
-   [System.Windows.Controls.Canvas]::SetLeft($SettingsButton.Icon, 826)
-   [System.Windows.Controls.Canvas]::SetTop($SettingsButton.Icon, 16)
-   $SettingsButton.Button.Tag = $SettingsButton
-   $SettingsButton.Icon.Tag   = $SettingsButton
-   $SettingsButton.Button.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\SettingsHover.png")))
-   })
-   $SettingsButton.Button.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Settings.png")))
-   })
-   $SettingsButton.Icon.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\SettingsHover.png")))
-   })
-   $SettingsButton.Icon.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Settings.png")))
-   })
-   $SystemWindowsControlsCanvas.Children.Add($SettingsButton.Button) | Out-Null
-   $SystemWindowsControlsCanvas.Children.Add($SettingsButton.Icon)   | Out-Null
-
-   $HomeButton = @{
-      Button = New-Object System.Windows.Controls.Image
-      Icon   = New-Object System.Windows.Controls.Image
-   }
-   $HomeButton.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActive.png")))
-   $HomeButton.Button.Width = 30
-   $HomeButton.Button.Height = 30
-   [System.Windows.Controls.Canvas]::SetLeft($HomeButton.Button, 780)
-   [System.Windows.Controls.Canvas]::SetTop($HomeButton.Button, 10)
-   $HomeButton.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeActive.png")))
-   $HomeButton.Icon.Width = 14
-   $HomeButton.Icon.Height = 14
-   [System.Windows.Controls.Canvas]::SetLeft($HomeButton.Icon, 788)
-   [System.Windows.Controls.Canvas]::SetTop($HomeButton.Icon, 18)
-   $HomeButton.Button.Tag = $HomeButton
-   $HomeButton.Icon.Tag   = $HomeButton
-   $HomeButton.Button.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActiveHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeHover.png")))
-   })
-   $HomeButton.Button.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActive.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeActive.png")))
-   })
-   $HomeButton.Icon.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActiveHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeHover.png")))
-   })
-   $HomeButton.Icon.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActive.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeActive.png")))
-   })
-   $HomeButton.Button.Add_MouseLeftButtonDown({
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomePressed.png")))
-      $this.CaptureMouse() | Out-Null
-   })
-   $HomeButton.Button.Add_MouseLeftButtonUp({
-      $this.ReleaseMouseCapture()
-      if ($this.IsMouseOver) {
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeActive.png")))
-      } else {
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeActive.png")))
-    }
-   })
-   $HomeButton.Icon.Add_MouseLeftButtonDown({
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomePressed.png")))
-      $this.CaptureMouse() | Out-Null
-   })
-   $HomeButton.Icon.Add_MouseLeftButtonUp({
-      $this.ReleaseMouseCapture()
-      if ($this.IsMouseOver) {
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeActive.png")))
-         $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActive.png")))
-      } else {
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\HomeActive.png")))
-    }
-   })
-   $SystemWindowsControlsCanvas.Children.Add($HomeButton.Button) | Out-Null
-   $SystemWindowsControlsCanvas.Children.Add($HomeButton.Icon)   | Out-Null
-
-   $UpdateNowButton = @{
-      Button = New-Object System.Windows.Controls.Image
-      Icon = New-Object System.Windows.Controls.Image
-      Text = New-Object System.Windows.Controls.Image
-   }
-   $UpdateNowButton.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-   $UpdateNowButton.Button.Width = 118
-   $UpdateNowButton.Button.Height = 38
-   [System.Windows.Controls.Canvas]::SetLeft($UpdateNowButton.Button, 775)
-   [System.Windows.Controls.Canvas]::SetTop($UpdateNowButton.Button, 300)
-   $UpdateNowButton.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-   $UpdateNowButton.Icon.Width = 18
-   $UpdateNowButton.Icon.Height = 18
-   [System.Windows.Controls.Canvas]::SetLeft($UpdateNowButton.Icon, 790)
-   [System.Windows.Controls.Canvas]::SetTop($UpdateNowButton.Icon, 305)
-   $UpdateNowButton.Text.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))
-   $UpdateNowButton.Text.Width = 46
-   $UpdateNowButton.Text.Height = 19
-   [System.Windows.Controls.Canvas]::SetLeft($UpdateNowButton.Text, 820)
-   [System.Windows.Controls.Canvas]::SetTop($UpdateNowButton.Text, 306)
-   $UpdateNowButton.Button.Tag = $UpdateNowButton
-   $UpdateNowButton.Icon.Tag   = $UpdateNowButton
-   $UpdateNowButton.Text.Tag = $UpdateNowButton
-   $UpdateNowButton.Button.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIconHover.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonTextHover.png")))
-   })
-   $UpdateNowButton.Button.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))
-   })
-   $UpdateNowButton.Icon.Add_MouseEnter({
-      $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIconHover.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonTextHover.png")))
-   })
-   $UpdateNowButton.Icon.Add_MouseLeave({
-      $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))
-   })
-   $UpdateNowButton.Text.Add_MouseEnter({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonHover.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIconHover.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonTextHover.png")))
-   })
-   $UpdateNowButton.Text.Add_MouseLeave({
-      $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))
-   })
-   $UpdateNowButton.Button.Add_MouseLeftButtonDown({
-      $this.Tag.Button.Width = 110
-      $this.Tag.Button.Height = 30
-      $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonPressed.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIconPressed.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonTextPressed.png")))
-      [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 780)
-      [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300) 
-      $this.CaptureMouse() | Out-Null
-   })
-   $UpdateNowButton.Button.Add_MouseLeftButtonUp({
-      $this.ReleaseMouseCapture()
-      if ($this.IsMouseOver) {
-         $this.Tag.Button.Width = 118
-         $this.Tag.Button.Height = 38
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-         $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-         $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))  
-         [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 775)
-         [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300) 
-         StartUpdateRun $AppList
-      } else {
-         $this.Tag.Button.Width = 118
-         $this.Tag.Button.Height = 38
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-         $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-         $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))  
-         [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 775)
-         [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300)
-    }
-   })
-   $UpdateNowButton.Icon.Add_MouseLeftButtonDown({
-      $this.Tag.Button.Width = 110
-      $this.Tag.Button.Height = 30
-      $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonPressed.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIconPressed.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png"))) 
-      [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 780)
-      [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300) 
-      $this.CaptureMouse() | Out-Null
-   })
-   $UpdateNowButton.Icon.Add_MouseLeftButtonUp({
-      $this.ReleaseMouseCapture()
-      if ($this.IsMouseOver) {
-         $this.Tag.Button.Width = 118
-         $this.Tag.Button.Height = 38 
-         $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-         $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))  
-         [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 775)
-         [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300)  
-         StartUpdateRun $AppList    
-      } else {
-         $this.Tag.Button.Width = 118
-         $this.Tag.Button.Height = 38 
-         $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-         $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))  
-         [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 775)
-         [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300) 
-    }
-   })
-   $UpdateNowButton.Text.Add_MouseLeftButtonDown({
-      $this.Tag.Button.Width = 110
-      $this.Tag.Button.Height = 30
-      $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonPressed.png")))
-      $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIconPressed.png")))
-      $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonTextPressed.png")))
-      [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 780)
-      [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300) 
-      $this.CaptureMouse() | Out-Null
-   })
-   $UpdateNowButton.Text.Add_MouseLeftButtonUp({
-      $this.ReleaseMouseCapture()
-      if ($this.IsMouseOver) {
-         $this.Tag.Button.Width = 118
-         $this.Tag.Button.Height = 38 
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-         $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-         $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))  
-         [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 775)
-         [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300) 
-         StartUpdateRun $AppList
-      } else {
-         $this.Tag.Button.Width = 118
-         $this.Tag.Button.Height = 38
-         $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonIcon.png")))
-         $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButton.png")))
-         $this.Tag.Text.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\UpdateButtonText.png")))  
-         [System.Windows.Controls.Canvas]::SetLeft($this.Tag.Button, 775)
-         [System.Windows.Controls.Canvas]::SetTop($this.Tag.Button, 300)
-    }
-   })
-   $SystemWindowsControlsCanvas.Children.Add($UpdateNowButton.Button) | Out-Null
-   $SystemWindowsControlsCanvas.Children.Add($UpdateNowButton.Icon)   | Out-Null
-   $SystemWindowsControlsCanvas.Children.Add($UpdateNowButton.Text) | Out-Null
-
-   $SystemWindowsControlsRichTextBoxImage0 = New-Object System.Windows.Controls.Image
-   $SystemWindowsControlsRichTextBoxImage0.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\ConsoleBox.png")))
-   $SystemWindowsControlsRichTextBoxImage0.Width = 760
-   $SystemWindowsControlsRichTextBoxImage0.Height = 310
-   [System.Windows.Controls.Canvas]::SetLeft($SystemWindowsControlsRichTextBoxImage0, 10)
-   [System.Windows.Controls.Canvas]::SetTop($SystemWindowsControlsRichTextBoxImage0, 50)
-   $SystemWindowsControlsCanvas.Children.Add($SystemWindowsControlsRichTextBoxImage0) | Out-Null
-
-   $SystemWindowsControlsRichTextBox0 = New-Object System.Windows.Controls.RichTextBox
-   $SystemWindowsControlsRichTextBox0.FontFamily = New-Object System.Windows.Media.FontFamily("Consolas")
-   $SystemWindowsControlsRichTextBox0.FontSize = 10
-   $SystemWindowsControlsRichTextBox0.Width = 760
-   $SystemWindowsControlsRichTextBox0.Height = 310
-   $SystemWindowsControlsRichTextBox0.BorderThickness = 0
-   $SystemWindowsControlsRichTextBox0.Document.PagePadding = [System.Windows.Thickness]::new(0)
-   $SystemWindowsControlsRichTextBox0.Background = [System.Windows.Media.Brushes]::Transparent
-   $SystemWindowsControlsRichTextBox0.Foreground = [System.Windows.Media.Brushes]::White
-   [System.Windows.Controls.Canvas]::SetLeft($SystemWindowsControlsRichTextBox0, 15)
-   [System.Windows.Controls.Canvas]::SetTop($SystemWindowsControlsRichTextBox0, 60)
-   $SystemWindowsControlsCanvas.Children.Add($SystemWindowsControlsRichTextBox0) | Out-Null
-
-   $SystemWindowsControlsRichTextBoxImage1 = New-Object System.Windows.Controls.Image
-   $SystemWindowsControlsRichTextBoxImage1.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\WindowsUpdateBox.png")))
-   $SystemWindowsControlsRichTextBoxImage1.Width = 410
-   $SystemWindowsControlsRichTextBoxImage1.Height = 120
-   [System.Windows.Controls.Canvas]::SetLeft($SystemWindowsControlsRichTextBoxImage1, 10)
-   [System.Windows.Controls.Canvas]::SetTop($SystemWindowsControlsRichTextBoxImage1, 370)
-   $SystemWindowsControlsCanvas.Children.Add($SystemWindowsControlsRichTextBoxImage1) | Out-Null
-
-   $SystemWindowsControlsRichTextBox1 = New-Object System.Windows.Controls.RichTextBox
-   $SystemWindowsControlsRichTextBox1.FontFamily = New-Object System.Windows.Media.FontFamily("Consolas")
-   $SystemWindowsControlsRichTextBox1.FontSize = 10
-   $SystemWindowsControlsRichTextBox1.Width = 410
-   $SystemWindowsControlsRichTextBox1.Height = 120
-   $SystemWindowsControlsRichTextBox1.BorderThickness = 0
-   $SystemWindowsControlsRichTextBox1.Document.PagePadding = [System.Windows.Thickness]::new(0)
-   $SystemWindowsControlsRichTextBox1.Background = [System.Windows.Media.Brushes]::Transparent
-   $SystemWindowsControlsRichTextBox1.Foreground = [System.Windows.Media.Brushes]::White
-   [System.Windows.Controls.Canvas]::SetLeft($SystemWindowsControlsRichTextBox1, 15)
-   [System.Windows.Controls.Canvas]::SetTop($SystemWindowsControlsRichTextBox1, 380)
-   $SystemWindowsControlsCanvas.Children.Add($SystemWindowsControlsRichTextBox1) | Out-Null
-
-   $SystemWindowsControlsRichTextBoxImage2 = New-Object System.Windows.Controls.Image
-   $SystemWindowsControlsRichTextBoxImage2.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\AppUpdateBox.png")))
-   $SystemWindowsControlsRichTextBoxImage2.Width = 460
-   $SystemWindowsControlsRichTextBoxImage2.Height = 120
-   [System.Windows.Controls.Canvas]::SetLeft($SystemWindowsControlsRichTextBoxImage2, 430)
-   [System.Windows.Controls.Canvas]::SetTop($SystemWindowsControlsRichTextBoxImage2, 370)
-   $SystemWindowsControlsCanvas.Children.Add($SystemWindowsControlsRichTextBoxImage2) | Out-Null
-
-   $SystemWindowsControlsRichTextBox2 = New-Object System.Windows.Controls.RichTextBox
-   $SystemWindowsControlsRichTextBox2.FontFamily = New-Object System.Windows.Media.FontFamily("Consolas")
-   $SystemWindowsControlsRichTextBox2.FontSize = 10
-   $SystemWindowsControlsRichTextBox2.Width = 460
-   $SystemWindowsControlsRichTextBox2.Height = 120
-   $SystemWindowsControlsRichTextBox2.BorderThickness = 0
-   $SystemWindowsControlsRichTextBox2.Document.PagePadding = [System.Windows.Thickness]::new(0)
-   $SystemWindowsControlsRichTextBox2.Background = [System.Windows.Media.Brushes]::Transparent
-   $SystemWindowsControlsRichTextBox2.Foreground = [System.Windows.Media.Brushes]::White
-   [System.Windows.Controls.Canvas]::SetLeft($SystemWindowsControlsRichTextBox2, 435)
-   [System.Windows.Controls.Canvas]::SetTop($SystemWindowsControlsRichTextBox2, 380)
-   $SystemWindowsControlsCanvas.Children.Add($SystemWindowsControlsRichTextBox2) | Out-Null
-
-   $Root.Content = $SystemWindowsControlsCanvas
-   return $Root, $SystemWindowsControlsRichTextBox0, $SystemWindowsControlsRichTextBox1, $SystemWindowsControlsRichTextBox2
-}
-function SystemWindow-Settings([System.Windows.Window]$SystemWindowsWindow){
-   <#Do this if a terminating exception happens#>
-}
-function SystemWindow-Show([System.Windows.Window]$SystemWindowsWindow){
-   $SystemWindowsWindow.Show()
-}
-function SystemWindow-Refresh(){
-   [System.Windows.Forms.Application]::DoEvents()
-}
-function SystemWindow-Hide([System.Windows.Window]$SystemWindowsWindow){
-   $SystemWindowsWindow.Hide()
-}
-function SystemWindow-ShowDialog([System.Windows.Window]$SystemWindowsWindow){
-   $SystemWindowsWindow.ShowDialog()
-}
-function SystemWindow-Close([System.Windows.Window]$SystemWindowsWindow){
-   $SystemWindowsWindow.Close()
-}
-function RichTextBox-Write([System.Windows.Controls.RichTextBox]$SystemWindowsControlsRichTextBox, [string]$Text, [switch]$Clear, [switch]$RemoveLast, [System.Windows.Media.Brush]$Color = [System.Windows.Media.Brushes]::White) {
-    if ($Clear) { $SystemWindowsControlsRichTextBox.Document.Blocks.Clear() }
-    if ($RemoveLast -and $SystemWindowsControlsRichTextBox.Document.Blocks.Count -gt 0) {
-        $SystemWindowsControlsRichTextBox.Document.Blocks.Remove($SystemWindowsControlsRichTextBox.Document.Blocks.LastBlock)
-    }
-    $Run = New-Object System.Windows.Documents.Run $Text.Trim()
-    $Run.Foreground = $Color
-    $Paragraph = New-Object System.Windows.Documents.Paragraph $Run
-    $Paragraph.Margin = [System.Windows.Thickness]::new(0)
-    $SystemWindowsControlsRichTextBox.Document.Blocks.Add($Paragraph)
-}
-#======================================#
-# SYSTEM Functions
-#======================================#
-function CheckForUpdates($MyInvocation) {
-   $CurrentVersion = "1.0.0"
-   $InstallDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-   $ScriptPath = $MyInvocation.MyCommand.Path
-   Write-Host "Checking for updates..." -ForegroundColor Cyan
-   try {
-      $Release = Invoke-RestMethod "https://api.github.com/repos/Casbian/CoreForge/releases/latest"
-      $LatestVersion = $Release.tag_name.TrimStart("v")
-      if ([version]$LatestVersion -gt [version]$CurrentVersion) {
-         Write-Host "Update available: $LatestVersion (current: $CurrentVersion)" -ForegroundColor Yellow
-         $ZipUrl = $Release.zipball_url
-            if ($ZipUrl) {
-               $TempZip = "$env:TEMP\CoreForge_update.zip"
-               $TempExtract = "$env:TEMP\CoreForge_update"
-               Write-Host "Downloading update..." -ForegroundColor Cyan
-               Invoke-WebRequest -Uri $ZipUrl -OutFile $TempZip
-               Write-Host "Extracting..." -ForegroundColor Cyan
-               if (Test-Path $TempExtract) {
-                  Remove-Item $TempExtract -Recurse -Force
-               }
-               Expand-Archive -Path $TempZip -DestinationPath $TempExtract
-               Write-Host "Applying update..." -ForegroundColor Green
-               $UpdateScript = @"
-`$ScriptPath = $ScriptPath
-Get-ChildItem -Path "$InstallDir" -Recurse | Remove-Item -Recurse -Force
-`$Source = Get-ChildItem "$TempExtract" | Where-Object { `$_.PSIsContainer } | Select-Object -First 1
-if (`$Source) {
-    Copy-Item "`$(`$Source.FullName)\*" "$InstallDir" -Recurse -Force
-} else {
-    Copy-Item "$TempExtract\*" "$InstallDir" -Recurse -Force
-}
-Remove-Item "$TempZip" -Force -ErrorAction SilentlyContinue
-Remove-Item "$TempExtract" -Recurse -Force -ErrorAction SilentlyContinue
-Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
-"@
-               $UpdateScriptPath = "$env:TEMP\CoreForge_apply_update.ps1"
-               $UpdateScript | Out-File -FilePath $UpdateScriptPath -Encoding utf8BOM
-               Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$UpdateScriptPath`"" 
-               exit
-            } else {
-               Write-Warning "No .zip asset found in latest release."
-               return $CurrentVersion
-            }
-         } else {
-            Write-Host "CoreForge is up to date ($CurrentVersion)" -ForegroundColor Green
-            return $CurrentVersion
-         }
-   } catch {
-      Write-Warning "Update check failed: $_"
-      return $CurrentVersion
-   }
-}
-function SettingsFileCheck($PSScriptRoot) {
-   try {
-      $SettingsFilePath = Join-Path $PSScriptRoot "settings"
-      if (Test-Path $SettingsFilePath) {
-         return 1
-      } else {
-         $default = @"
-Network =
-LogEmail =
-"@
-         New-Item -Path $SettingsFilePath -ItemType File -Force | Out-Null
-         Set-Content -Path $SettingsFilePath -Value $default -Encoding utf8BOM
-         return $SettingsFilePath
-      }
-   } catch {
-      <#Do this if a terminating exception happens#>
-   }
-}
-function AutologonExeCheck($PSScriptRoot) {
-   try {
-      $AutologonExePath = Join-Path $PSScriptRoot "AutoLogon.exe"
-      if (Test-Path $AutologonExePath) {
-         return 1
-      } else {
-         return $AutologonExePath
-      }
-   }
-   catch {
-      <#Do this if a terminating exception happens#>
-   }
-}
-function WindowsUpdate-Get() {
-   try {
-      if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
-         Remove-Module PSWindowsUpdate -Force -ErrorAction SilentlyContinue
-         Install-Module PSWindowsUpdate -Force -Scope AllUsers -ErrorAction SilentlyContinue
-      }
-      Import-Module PSWindowsUpdate;
-      $services = @('wuauserv', 'bits', 'cryptsvc')
-      foreach ($serviceName in $services) {
-         $serviceRunning = $false;
-         while ($serviceRunning -eq $false) {
-            $service = Get-Service -Name $serviceName;
-            if ($null -eq $service) {
-                  break;
-            }
-            if ($service.Status -ne 'Running') {
-                  Start-Service $serviceName;
-            } else {
-                  $serviceRunning = $true;
-                  break;
-            }
-         }
-      }
-      
-      $Updates = Get-WindowsUpdate -IgnoreReboot
-      if ($Updates | Where-Object { $_.RebootRequired -eq $true }) {
-         return 1
-      }
-      if ($Updates.Count -eq 0) {
-         return 0
-      } else {
-         $StringBuilder = New-Object System.Text.StringBuilder
-         while ($true) {
-            $verbose = Get-WindowsUpdate -Verbose -IgnoreReboot 4>&1
-            foreach ($line in $verbose) {
-               $trimmedLine = $line.Message -replace 'Please wait\.\.\.', ''
-               $StringBuilder.AppendLine($trimmedLine) | Out-Null
-            }
-            break
-         }
-      }
-         return $StringBuilder.ToString()
-   } catch {
-      <#Do this if a terminating exception happens#>
-   }
-}
-function Winget-Get() {
-   try {
-      $MaxChars = 80
-      $Lines = "Y" | winget list --upgrade-available --include-unknown
-      $Lines = $Lines -replace 'Verf├╝gbar','verfügbar' -replace 'ÔÇ…','…' -replace '├ñ','ä' -replace '├Ñ','Ä' -replace '├╝','ü' -replace '├┐','Ö' -replace '├╢','ß' -replace 'ÔÇª','…' -replace '├ü','ü' -replace '├Ä','ä' -replace '├Ö','ö' -replace '├Ü','Ü'
-      $AppList = @()
-      $StringBuilder = New-Object System.Text.StringBuilder
-      $OutputStart = $false
-      foreach ($Line in $Lines) {
-         if (-not $OutputStart -and $Line -like 'Name*') { $OutputStart = $true }
-         if ($OutputStart) {
-            $TrimmedLine = if ($Line.Length -gt $MaxChars) { $Line.Substring(0, $MaxChars) } else { $Line }
-            $StringBuilder.AppendLine($TrimmedLine) | Out-Null
-         }
-         if ($Line -match '^(.+?)\s+([A-Za-z][\w.-]+\.[A-Za-z][\w.-]+)\s+[\d]') {
-            $AppList += @{
-            name = $matches[1].Trim()
-            id   = $matches[2].Trim()
-            }
-         }
-      }
-      return $StringBuilder.ToString().Trim(), $AppList
-   } catch {
-      <#Do this if a terminating exception happens#>
-   }
-}
 function UpdateRun($AppList) {
    try {
       if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
@@ -681,21 +68,21 @@ function UpdateRun($AppList) {
       }
       if ($line) {
          $trimmedLine = $line -replace 'Please wait\.\.\.', ''
-         RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> $trimmedLine" -RemoveLast -Color ([System.Windows.Media.Brushes]::Cyan)
-         SystemWindow-Refresh
+         RichTextBox $SystemWindowsControlsRichTextBox0 "> $trimmedLine" -RemoveLast -Color ([System.Windows.Media.Brushes]::Cyan)
+         Window
       } 
       }
+      RichTextBox $SystemWindowsControlsRichTextBox0 ""
+      Window
       foreach ($App in $AppList) {
          $AppName = $App.name
          $AppID = $App.id
-         RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | Installation   | $AppName | -" -Color ([System.Windows.Media.Brushes]::Cyan)
-         SystemWindow-Refresh
          winget install --id $AppID --uninstall-previous --accept-package-agreements --accept-source-agreements --force | ForEach-Object {
-            RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> $_" -RemoveLast -Color ([System.Windows.Media.Brushes]::Cyan)
-            SystemWindow-Refresh
+            RichTextBox $SystemWindowsControlsRichTextBox0 "> $_" -RemoveLast -Color ([System.Windows.Media.Brushes]::Cyan)
+            Window
          }
-         RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | Installation   | ✔ - $AppName" -Color ([System.Windows.Media.Brushes]::Cyan)  
-         SystemWindow-Refresh
+         RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | Installation   | v/ - $AppName" -Color ([System.Windows.Media.Brushes]::Cyan)  
+         Window
       }
    }
    catch {
@@ -703,56 +90,51 @@ function UpdateRun($AppList) {
    }
 }
 function StartUpdateRun($AppList) {
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-   SystemWindow-Refresh
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-   SystemWindow-Refresh
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "‎  Update Run"
-   SystemWindow-Refresh
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "_________________________________________________________________"
-   SystemWindow-Refresh
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-   SystemWindow-Refresh
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 ""
+   RichTextBox $SystemWindowsControlsRichTextBox0 ""
+   RichTextBox $SystemWindowsControlsRichTextBox0 "‎  Update Run"
+   RichTextBox $SystemWindowsControlsRichTextBox0 "_________________________________________________________________"
+   RichTextBox $SystemWindowsControlsRichTextBox0 ""
+   RichTextBox $SystemWindowsControlsRichTextBox0 ""
+   Window
    UpdateRun $AppList
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | ReScan         | -" -Color ([System.Windows.Media.Brushes]::Cyan)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | ReScan         | -" -Color ([System.Windows.Media.Brushes]::Cyan)
+   Window
    try {
       $WindowsUpdateOutput = WindowsUpdate-Get
       if ($WindowsUpdateOutput -eq 0) {
-         RichTextBox-Write $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
-         SystemWindow-Refresh
+         RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
+         Window
       } elseif ($WindowsUpdateOutput -eq 1) {
          $RebootFlag = $true
-         RichTextBox-Write $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
-         SystemWindow-Refresh
+         RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
+         Window
       } else {
-         RichTextBox-Write $SystemWindowsControlsRichTextBox1 $WindowsUpdateOutput -Clear
-         SystemWindow-Refresh
+         RichTextBox $SystemWindowsControlsRichTextBox1 $WindowsUpdateOutput -Clear
+         Window
       }
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | ReScan         | ✔" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | ReScan         | v/" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
+      Window
    } catch {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | ReScan         | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | ReScan         | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
+      Window
    }
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | ReScan         | -" -Color ([System.Windows.Media.Brushes]::Cyan)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | ReScan         | -" -Color ([System.Windows.Media.Brushes]::Cyan)
+   Window
    try {
       $WingetOutput, $AppList = Winget-Get
       if ($null -eq $AppList -or $AppList.Count -eq 0) {
-         RichTextBox-Write $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
-         SystemWindow-Refresh
+         RichTextBox $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
+         Window
       } else {
-         RichTextBox-Write $SystemWindowsControlsRichTextBox2 $WingetOutput -Clear
-         SystemWindow-Refresh
+         RichTextBox $SystemWindowsControlsRichTextBox2 $WingetOutput -Clear
+         Window
       }
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | ReScan         | ✔" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | ReScan         | v/" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
+      Window
    } catch {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | ReScan         | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | ReScan         | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
+      Window
    }
    if ($RebootFlag -eq $true) {
       $ResultQuestion = [System.Windows.MessageBox]::Show(
@@ -772,115 +154,130 @@ function StartUpdateRun($AppList) {
 #======================================#
 # MAIN
 #======================================#
-$CurrentVersion = CheckForUpdates $MyInvocation
-$SystemWindowsWindow = StartUpLogo-Show
-Start-Sleep -Seconds 2
-SystemWindow-Close $SystemWindowsWindow
 
-$SystemWindowsWindow, $SystemWindowsControlsRichTextBox0, $SystemWindowsControlsRichTextBox1, $SystemWindowsControlsRichTextBox2 = SystemWindow-Home
-SystemWindow-Show $SystemWindowsWindow
 
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM $CurrentVersion         | StartUp" -Clear -Color ([System.Windows.Media.Brushes]::Cyan)
-SystemWindow-Refresh
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-SystemWindow-Refresh
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 "‎  MODULE               | TASK           | RESULT"
-SystemWindow-Refresh
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 "_______________________________________________________________________________________________________________________________________"
-SystemWindow-Refresh
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-SystemWindow-Refresh
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | SettingsFile   | -" -Color ([System.Windows.Media.Brushes]::Cyan)
-SystemWindow-Refresh
+$CurrentVersion = Update $MyInvocation
+
+Logo
+
+$ThreadPool = ThreadPool
+
+$SystemWindowsWindow, $SystemWindowsControlsRichTextBox0, $SystemWindowsControlsRichTextBox1, $SystemWindowsControlsRichTextBox2 = Home
+
+
+RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM $CurrentVersion         | StartUp" -Clear -Color ([System.Windows.Media.Brushes]::Cyan)                                                | Out-Null
+RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                               | Out-Null
+RichTextBox $SystemWindowsControlsRichTextBox0 "‎  MODULE               | TASK           | RESULT"                                                                                       | Out-Null
+RichTextBox $SystemWindowsControlsRichTextBox0 "_______________________________________________________________________________________________________________________________________"        | Out-Null
+RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                               | Out-Null
+RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                               | Out-Null
+Window                                                                                                                                                                                        | Out-Null
+
+
 try {
-   $SettingsFileCheckReturn = SettingsFileCheck $PSScriptRoot
-   if ($SettingsFileCheckReturn -eq 1) {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | SettingsFile   | ✔" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
+   $Result = Thread {
+      param($Function, $Parameter)
+      $FunctionBlock = [scriptblock]::Create($Function)
+      & $FunctionBlock $Parameter
+   } -ThreadPool $ThreadPool -Function ${function:FileCheckSettings} -Parameter $PSScriptRoot -TaskName "SettingsFile"
+   if ($Result -eq 1) {
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM               | SettingsFile   | v/" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)                             | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
    } else {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | SettingsFile   | ✖" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM could not find SettingsFile at $SettingsFileCheckReturn" -Color ([System.Windows.Media.Brushes]::Red)
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM created a new EMPTY SettingsFile" -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-      SystemWindow-Refresh
-   }
-   
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM               | SettingsFile   | X" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)                                     | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM could not find SettingsFile at $Result" -Color ([System.Windows.Media.Brushes]::Red)                                             | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM created a new EMPTY SettingsFile" -Color ([System.Windows.Media.Brushes]::LightGreen)                                            | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                         | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
+   } 
 }
 catch {
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | SettingsFile   | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM               | SettingsFile   | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)                                    | Out-Null
+   Window                                                                                                                                                                                     | Out-Null
 }
 
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | AutologonExe   | -" -Color ([System.Windows.Media.Brushes]::Cyan)
-SystemWindow-Refresh
+
+RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                               | Out-Null
+Window                                                                                                                                                                                        | Out-Null
 try {
-   $AutologonExeCheckReturn = AutologonExeCheck $PSScriptRoot
-   if ($AutologonExeCheckReturn -eq 1) {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | AutologonExe   | ✔" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
+   $Result = Thread {
+      param($Function, $Parameter)
+      $FunctionBlock = [scriptblock]::Create($Function)
+      & $FunctionBlock $Parameter
+   } -ThreadPool $ThreadPool -Function ${function:FileCheckAutologon} -Parameter $PSScriptRoot -TaskName "AutologonExe"
+   if ($Result -eq 1) {
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM               | AutologonExe   | v/" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)                             | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
    } else {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "" -RemoveLast
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | AutologonExe   | ✖" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM could not find AutologonExe at $AutologonExeCheckReturn" -Color ([System.Windows.Media.Brushes]::Red)
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM Download at - https://learn.microsoft.com/en-us/sysinternals/downloads/autologon" -Color ([System.Windows.Media.Brushes]::Red)
-      SystemWindow-Refresh
-      RichTextBox-Write $SystemWindowsControlsRichTextBox0 ""
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" -RemoveLast                                                                                                                             | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                         | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM               | AutologonExe   | X" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM could not find AutologonExe at $Result" -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM Download at - https://learn.microsoft.com/en-us/sysinternals/downloads/autologon" -Color ([System.Windows.Media.Brushes]::Red)   | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                         | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
    }
-   
 }
 catch {
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> SYSTEM               | AutologonExe   | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> SYSTEM               | AutologonExe   | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)                                    | Out-Null
+   Window                                                                                                                                                                                     | Out-Null
 }
-                                                                    
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | preScan        | -" -Color ([System.Windows.Media.Brushes]::Cyan)
-SystemWindow-Refresh
+   
+
+RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                               | Out-Null
+Window                                                                                                                                                                                        | Out-Null
 try {
-   $WindowsUpdateOutput = WindowsUpdate-Get
-   if ($WindowsUpdateOutput -eq 0) {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
-   } elseif ($WindowsUpdateOutput -eq 1) {
+   $Result = Thread {
+      param($Function, $Parameter)
+      $FunctionBlock = [scriptblock]::Create($Function)
+      & $FunctionBlock $Parameter
+   } -ThreadPool $ThreadPool -Function ${function:ListWindowsUpdate} -TaskName "preScan"
+   if ($Result -eq 0) {
+      RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)                                                  | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
+   } elseif ($Result -eq 1) {
       $RebootFlag = $true
-      RichTextBox-Write $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)                                | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
    } else {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox1 $WindowsUpdateOutput -Clear
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox1 $Result -Clear                                                                                                                             | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
    }
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | preScan        | ✔" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | preScan        | v/" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)                                | Out-Null
+   Window                                                                                                                                                                                     | Out-Null
 }
 catch {
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | preScan        | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE WindowsUpdate | preScan        | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)                                    | Out-Null
+   Window                                                                                                                                                                                     | Out-Null
 }
-RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | preScan        | -" -Color ([System.Windows.Media.Brushes]::Cyan)
-SystemWindow-Refresh
+
+
+RichTextBox $SystemWindowsControlsRichTextBox0 ""                                                                                                                                               | Out-Null
+Window                                                                                                                                                                                        | Out-Null
 try {
-   $WingetOutput, $AppList = Winget-Get
-   if ($null -eq $AppList -or $AppList.Count -eq 0) {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)
-      SystemWindow-Refresh
+   $Result = Thread {
+      param($Function, $Parameter)
+      $FunctionBlock = [scriptblock]::Create($Function)
+      & $FunctionBlock $Parameter
+   } -ThreadPool $ThreadPool -Function ${function:ListWinget} -TaskName "preScan"
+   $Result2 = Thread {
+      param($Function, $Parameter)
+      $FunctionBlock = [scriptblock]::Create($Function)
+      & $FunctionBlock $Parameter
+   } -ThreadPool $ThreadPool -Function ${function:ListWingetApps} -TaskName "preScan"
+   if ($null -eq $Result2 -or $Result2.Count -eq 0) {
+      RichTextBox $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen)                                                 | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
    } else {
-      RichTextBox-Write $SystemWindowsControlsRichTextBox2 $WingetOutput -Clear
-      SystemWindow-Refresh
+      RichTextBox $SystemWindowsControlsRichTextBox2 $Result -Clear                                                                                                                             | Out-Null
+      Window                                                                                                                                                                                  | Out-Null
    }
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | preScan        | ✔" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | preScan        | v/" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen)                                | Out-Null
+   Window                                                                                                                                                                                     | Out-Null
 }
 catch {
-   RichTextBox-Write $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | preScan        | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)
-   SystemWindow-Refresh
+   RichTextBox $SystemWindowsControlsRichTextBox0 "> MODULE Winget        | preScan        | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red)                                    | Out-Null
+   Window                                                                                                                                                                                     | Out-Null
 }
 if ($RebootFlag -eq $true) {
    $ResultQuestion = [System.Windows.MessageBox]::Show(
@@ -896,6 +293,7 @@ if ($RebootFlag -eq $true) {
 }
 
 
-
-SystemWindow-Hide $SystemWindowsWindow
-SystemWindow-ShowDialog $SystemWindowsWindow
+$SystemWindowsWindow.Hide()
+$SystemWindowsWindow.ShowDialog()
+$ThreadPool.Close()
+$ThreadPool.Dispose()

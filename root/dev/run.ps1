@@ -1,1 +1,2 @@
-Start-Process PowerShell.exe root\main.ps1
+﻿$Path = Join-Path (Split-Path ([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)) "root\main.ps1"
+Start-Process PowerShell.exe -ArgumentList "-ExecutionPolicy Bypass -File `"$Path`"" -WindowStyle Hidden
