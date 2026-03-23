@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/LogoBig.png" width="120" alt="CoreForge logo" />
+  <img src="root/assets/LogoBig.png" width="120" alt="CoreForge Logo" />
 </p>
 <h1 align="center">CoreForge</h1>
 <br>
