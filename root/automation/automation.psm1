@@ -1,0 +1,1 @@
+﻿. "$PSScriptRoot\automation.ps1"

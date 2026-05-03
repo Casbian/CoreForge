@@ -35,7 +35,7 @@ function SystemLogoContinueOneFrame($SystemWindowsWindow, $LoadingBar, $LoadingB
       $SystemWindowsWindow.Close()
    }
 }
-function System(){
+function System($MyInvocation){
    $SystemWindowsWindow = New-Object System.Windows.Window
    $SystemWindowsWindow.WindowStyle = "None"
    $SystemWindowsWindow.AllowsTransparency = $true
@@ -62,7 +62,7 @@ function System(){
    $DragBarImage.Add_MouseLeftButtonDown({
       [System.Windows.Window]::GetWindow($args[0]).DragMove()
    })
-   $AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation"
+   $AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation" -ErrorAction SilentlyContinue
    $AutomationButton = @{
       Button = New-Object System.Windows.Controls.Image
       Icon   = New-Object System.Windows.Controls.Image
@@ -133,12 +133,12 @@ function System(){
                AutomationActivate
                $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelActive.png")))
                $this.Tag.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelTextActive.png")))
-               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation"
+               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation" -ErrorAction SilentlyContinue
             } else {
                AutomationDeactivate
                $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelInactive.png")))
                $this.Tag.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelTextInactive.png")))
-               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation"
+               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation" -ErrorAction SilentlyContinue
             }
             $this.Tag.Active = $false
          }
@@ -169,12 +169,12 @@ function System(){
                AutomationActivate
                $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelActive.png")))
                $this.Tag.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelTextActive.png")))
-               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation"
+               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation" -ErrorAction SilentlyContinue
             } else {
                AutomationDeactivate
                $this.Tag.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelInactive.png")))
                $this.Tag.Icon.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarAutomationLabelTextInactive.png")))
-               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation"
+               $this.Tag.AutomationCheck = Get-ScheduledTask -TaskName "CoreForge_Automation" -ErrorAction SilentlyContinue
             }
             $this.Tag.Active = $false
          }
@@ -194,6 +194,7 @@ function System(){
       Button = New-Object System.Windows.Controls.Image
       Icon   = New-Object System.Windows.Controls.Image
       Active  = $false
+      MyInvocation = $MyInvocation
    }
    $UpdateNowButton.Button.Source = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
    $UpdateNowButton.Button.Width = 30
@@ -239,7 +240,7 @@ function System(){
          if (-not $this.Tag.Active) {
             $this.Tag.Active = $true
             $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActiveHover.png")))
-            UpdateRun $AppList
+            SystemStartUpdateRun $WingetAppList $this.Tag.MyInvocation $WindowsUpdateNeeded $AppUpdateNeeded $GPUUpdateNeeded
             $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
             $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\IconSystemUpdate.png")))
             $this.Tag.Active = $false
@@ -262,7 +263,7 @@ function System(){
          if (-not $this.Tag.Active) {
             $this.Tag.Active = $true
             $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\BarActiveHover.png")))
-            UpdateRun $AppList
+            SystemStartUpdateRun $WingetAppList $this.Tag.MyInvocation $WindowsUpdateNeeded $AppUpdateNeeded $GPUUpdateNeeded
             $this.Tag.Button.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\Bar.png")))
             $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\IconSystemUpdate.png")))
             $this.Tag.Active = $false
@@ -461,6 +462,8 @@ function System(){
       $this.ReleaseMouseCapture()
       if ($this.IsMouseOver -or $this.Tag.Icon.IsMouseOver) {
          $SystemWindowsWindow.Close()
+         $ThreadPool.Close()
+         $ThreadPool.Dispose()
          exit
       } else {
          $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\IconClose.png")))
@@ -474,6 +477,8 @@ function System(){
       $this.ReleaseMouseCapture()
       if ($this.IsMouseOver -or $this.Tag.Button.IsMouseOver) {
          $SystemWindowsWindow.Close()
+         $ThreadPool.Close()
+         $ThreadPool.Dispose()
          exit
       } else {
          $this.Tag.Icon.Source   = New-Object System.Windows.Media.Imaging.BitmapImage (New-Object System.Uri ((Join-Path $PSScriptRoot "..\assets\IconClose.png")))
@@ -706,7 +711,8 @@ function SystemInfo($SystemWindowsControlsCanvas, $InfoButton, $EnvironmentValue
    $TextBoxEnvironmentValues.Document.PagePadding = [System.Windows.Thickness]::new(0)
    $TextBoxEnvironmentValues.Background = [System.Windows.Media.Brushes]::Transparent
    $TextBoxEnvironmentValues.Foreground = [System.Windows.Media.Brushes]::White
-   RichTextBox $TextBoxEnvironmentValues ("{0,-14}| {1}" -f "PC Name", $EnvironmentValues[0]) -Clear | Out-Null
+   RichTextBoxClear $TextBoxEnvironmentValues
+   RichTextBox $TextBoxEnvironmentValues ("{0,-14}| {1}" -f "PC Name", $EnvironmentValues[0]) | Out-Null
    RichTextBox $TextBoxEnvironmentValues ("{0,-14}| {1}" -f "Domain", $EnvironmentValues[1]) | Out-Null
    RichTextBox $TextBoxEnvironmentValues ("{0,-14}| {1}" -f "Logon Server", $EnvironmentValues[2]) | Out-Null
    RichTextBox $TextBoxEnvironmentValues ("{0,-14}| {1}" -f "User", $EnvironmentValues[3]) | Out-Null
@@ -731,7 +737,8 @@ function SystemInfo($SystemWindowsControlsCanvas, $InfoButton, $EnvironmentValue
    $TextBoxNetworkValues.Foreground = [System.Windows.Media.Brushes]::White
    for ($i = 0; $i -lt $NetworkValues.Count; $i += 3) {
       if ($i -eq 0) {
-         RichTextBox $TextBoxNetworkValues ("{0,-5}| {1}" -f "Name", $NetworkValues[$i]) -Clear | Out-Null
+         RichTextBoxClear $TextBoxNetworkValues
+         RichTextBox $TextBoxNetworkValues ("{0,-5}| {1}" -f "Name", $NetworkValues[$i]) | Out-Null
       } else {
          RichTextBox $TextBoxNetworkValues ("{0,-5}| {1}" -f "Name", $NetworkValues[$i]) | Out-Null
       }
@@ -752,7 +759,8 @@ function SystemInfo($SystemWindowsControlsCanvas, $InfoButton, $EnvironmentValue
    $TextBoxCPUValues.Document.PagePadding = [System.Windows.Thickness]::new(0)
    $TextBoxCPUValues.Background = [System.Windows.Media.Brushes]::Transparent
    $TextBoxCPUValues.Foreground = [System.Windows.Media.Brushes]::White
-   RichTextBox $TextBoxCPUValues $CPUValues[0] -Clear | Out-Null
+   RichTextBoxClear $TextBoxCPUValues
+   RichTextBox $TextBoxCPUValues $CPUValues[0] | Out-Null
    RichTextBox $TextBoxCPUValues ("{0,-14}| {1}" -f "Architecture", $CPUValues[1]) | Out-Null
    RichTextBox $TextBoxCPUValues ("{0,-14}| {1}" -f "Cores", $CPUValues[2]) | Out-Null
    RichTextBox $TextBoxCPUValues ("{0,-14}| {1}" -f "Logical Cores", $CPUValues[3]) | Out-Null
@@ -770,7 +778,8 @@ function SystemInfo($SystemWindowsControlsCanvas, $InfoButton, $EnvironmentValue
    $TextBoxGPUValues.Document.PagePadding = [System.Windows.Thickness]::new(0)
    $TextBoxGPUValues.Background = [System.Windows.Media.Brushes]::Transparent
    $TextBoxGPUValues.Foreground = [System.Windows.Media.Brushes]::White
-   RichTextBox $TextBoxGPUValues $GPUValues[0] -Clear | Out-Null
+   RichTextBoxClear $TextBoxGPUValues
+   RichTextBox $TextBoxGPUValues $GPUValues[0] | Out-Null
    RichTextBox $TextBoxGPUValues ("{0,-7}| {1}" -f "Driver", $GPUValues[1]) | Out-Null
    Window | Out-Null
    $IconRAMValues = New-Object System.Windows.Controls.Image
@@ -788,7 +797,8 @@ function SystemInfo($SystemWindowsControlsCanvas, $InfoButton, $EnvironmentValue
    $TextBoxRAMValues.Foreground = [System.Windows.Media.Brushes]::White
    for ($i = 0; $i -lt $NetworkValues.Count; $i += 3) {
       if ($i -eq 0) {
-         RichTextBox $TextBoxRAMValues ("{0} {1} GB {2} MHZ" -f $RAMValues[$i], $RAMValues[$i+1], $RAMValues[$i+2]) -Clear | Out-Null
+         RichTextBoxClear $TextBoxRAMValues
+         RichTextBox $TextBoxRAMValues ("{0} {1} GB {2} MHZ" -f $RAMValues[$i], $RAMValues[$i+1], $RAMValues[$i+2]) | Out-Null
       } else {
          RichTextBox $TextBoxRAMValues ("{0} {1} GB {2} MHZ" -f $RAMValues[$i], $RAMValues[$i+1], $RAMValues[$i+2]) | Out-Null
       }
@@ -952,149 +962,234 @@ function SystemInfoGet() {
    }
    return $EnvironmentValues, $NetworkValues, $CPUValues, $GPUValues, $RAMValues
 }
-function UpdateRun($AppList) {
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Update Run"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "______________________________________________________________________________"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Windows Updates"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
+function SystemStartUpdateRun($WingetAppList,$MyInvocation,$WindowsUpdateNeeded,$AppUpdateNeeded,$GPUUpdateNeeded) {
+
+   $TaskName = [System.Collections.Generic.List[string]]::new()
+   if ($WindowsUpdateNeeded -eq $true) {
+      $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:WindowsUpdateUpdateRun}))
+      $TaskName.Add("Windows Update Run")
+   }
+   if ($AppUpdateNeeded -eq $true) {
+      $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:AppUpdateRun} -Parameter $WingetAppList))
+      $TaskName.Add("Application Update Run")
+   }
+   if ($GPUUpdateNeeded -eq $true) {
+      $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:GPUNvidiaUpdateRun} -Parameter $MyInvocation))
+      $TaskName.Add("GPU Update Run")
+   }
+
+   if ($ThreadList.Count -eq 0) {
+      RichTextBoxClear $SystemWindowsControlsRichTextBox0
+      RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "Welcome $UserName" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "Update Run | No Updates needed" | Out-Null
+      Window  | Out-Null
+      return
+   }
+
+   $Frames = @("⣷","⣯","⣟","⡿","⢿","⣻","⣽","⣾")
+   $FrameIndex = 0
+   while ($ThreadList | Where-Object { -not $_.Handle.IsCompleted }) {
+      RichTextBoxClear $SystemWindowsControlsRichTextBox0
+      RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "Welcome $UserName" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      $Frame = $Frames[$FrameIndex % $Frames.Count]
+      for ($i = 0; $i -lt $ThreadList.Count; $i++) {
+         if (-not $ThreadList[$i].Handle.IsCompleted) {
+            RichTextBox $SystemWindowsControlsRichTextBox0 "$Frame Update Run | $($TaskName[$i])" | Out-Null
+         }
+      }
+      Window  | Out-Null
+      $FrameIndex++
+      Start-Sleep -Seconds 0.05
+   }
+
+   $Results = [System.Collections.Generic.List[object]]::new()
+   foreach ($Thread in $ThreadList) {
+      $Result = $Thread.Instance.EndInvoke($Thread.Handle)
+      if ($Thread.Instance.HadErrors) {
+         $Thread.Instance.Streams.Error | ForEach-Object { Write-Warning "Thread error: $_" }
+      }
+      $Thread.Instance.Dispose()
+      $Results.Add($Result)
+   }
+   $ThreadList.Clear()
+   if ($WindowsUpdateNeeded -eq $true -and $AppUpdateNeeded -ne $true -and $GPUUpdateNeeded -ne $true) {
+      $WindowsUpdateResults = $Results[0]
+   } elseif ($WindowsUpdateNeeded -eq $true -and $AppUpdateNeeded -eq $true -and $GPUUpdateNeeded -ne $true) {
+      $WindowsUpdateResults = $Results[0]
+      $AppUpdateResults = $Results[1]
+   } elseif ($WindowsUpdateNeeded -eq $true -and $AppUpdateNeeded -eq $true -and $GPUUpdateNeeded -eq $true) {
+      $WindowsUpdateResults = $Results[0]
+      $AppUpdateResults = $Results[1]
+      $GPUUpdateResults = $Results[2]
+   } elseif ($WindowsUpdateNeeded -ne $true -and $AppUpdateNeeded -eq $true -and $GPUUpdateNeeded -eq $true) {
+      $AppUpdateResults = $Results[0]
+      $GPUUpdateResults = $Results[1]
+   } elseif ($WindowsUpdateNeeded -ne $true -and $AppUpdateNeeded -ne $true -and $GPUUpdateNeeded -eq $true) {
+      $GPUUpdateResults = $Results[0]
+   } elseif ($WindowsUpdateNeeded -ne $true -and $AppUpdateNeeded -eq $true -and $GPUUpdateNeeded -ne $true) {
+      $AppUpdateResults = $Results[0]
+   } elseif ($WindowsUpdateNeeded -eq $true -and $AppUpdateNeeded -ne $true -and $GPUUpdateNeeded -eq $true) {
+      $WindowsUpdateResults = $Results[0]
+      $GPUUpdateResults = $Results[1]
+   }
+
+   RichTextBoxClear $SystemWindowsControlsRichTextBox0
+   RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "Welcome $UserName" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
    Window  | Out-Null
-   $Result = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:UpdateRunWindowsUpdate} -TaskName "Windows Updates"
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  -RemoveLast -Replace | Out-Null
-   Window  | Out-Null
-   $Lines = $Result -split "`r?`n"
-   foreach ($Line in $Lines) {
-      if (-not [string]::IsNullOrWhiteSpace($Line)) {
-         RichTextBox $SystemWindowsControlsRichTextBox0 ">> $($Line.Trim())" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         Window | Out-Null
+   if ($WindowsUpdateNeeded -eq $true) {
+      RichTextBox $SystemWindowsControlsRichTextBox0 "Windows Updates" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      $Lines = $WindowsUpdateResults -split "`r?`n"
+      foreach ($Line in $Lines) {
+         if (-not [string]::IsNullOrWhiteSpace($Line)) {
+            RichTextBox $SystemWindowsControlsRichTextBox0 "$($Line.Trim())" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+            Window | Out-Null
+         }
       }
    }
-   RichTextBox $SystemWindowsControlsRichTextBox0 "______________________________________________________________________________"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Application Updates"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   Window | Out-Null
-   $Result = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:UpdateRunWinget} -Parameter $AppList -TaskName "App Updates"
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  -RemoveLast -Replace | Out-Null
-   Window  | Out-Null
-   $Lines = $Result -split "`r?`n"
-   foreach ($Line in $Lines) {
-      if (-not [string]::IsNullOrWhiteSpace($Line)) {
-         RichTextBox $SystemWindowsControlsRichTextBox0 ">> $($Line.Trim())" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         Window | Out-Null
+   if ($AppUpdateNeeded -eq $true) {
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "App Updates" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      $Lines = $AppUpdateResults -split "`r?`n"
+      foreach ($Line in $Lines) {
+         if (-not [string]::IsNullOrWhiteSpace($Line)) {
+            RichTextBox $SystemWindowsControlsRichTextBox0 "$($Line.Trim())" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+            Window | Out-Null
+         }
       }
    }
-   RichTextBox $SystemWindowsControlsRichTextBox0 "______________________________________________________________________________"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "ReScan"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   Window | Out-Null
-   try {
-      $Result = Thread {
-         param($Function, $Parameter)
-         $FunctionBlock = [scriptblock]::Create($Function)
-         & $FunctionBlock $Parameter
-      } -ThreadPool $ThreadPool -Function ${function:WindowsUpdateGetStatus} -TaskName "ReSCAN Windows Update"
-      if ($Result -eq 0) {
-         RichTextBox $SystemWindowsControlsRichTextBox0 ">> ReSCAN Windows Update                | No Windows Updates available" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-         Window | Out-Null
-      } elseif ($Result -eq 1) {
-         $RebootFlag = $true
-         RichTextBox $SystemWindowsControlsRichTextBox0 ">> ReSCAN Windows Update                | No Windows Updates available - Reboot Required" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-         Window | Out-Null
-      } else {
-         RichTextBox $SystemWindowsControlsRichTextBox1 $Result -Clear | Out-Null
-         Window | Out-Null
+   if ($GPUUpdateNeeded -eq $true) {
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "GPU Updates" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      $Lines = $GPUUpdateResults -split "`r?`n"
+      foreach ($Line in $Lines) {
+         if (-not [string]::IsNullOrWhiteSpace($Line)) {
+            RichTextBox $SystemWindowsControlsRichTextBox0 "$($Line.Trim())" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+            Window | Out-Null
+         }
       }
-   } catch {
-      RichTextBox $SystemWindowsControlsRichTextBox0 ">> ReSCAN Windows Update                | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
+   }
+
+   $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:WindowsUpdateGetStatus}))
+   $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:AppGetStatus}))
+   $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:AppGetApplist}))
+   $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:GPUInstalledVersion}))
+   $ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:GPULatestVersion}))
+
+   RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "ReSCAN" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+   $Frames = @("⣷","⣯","⣟","⡿","⢿","⣻","⣽","⣾")
+   $FrameIndex = 0
+   $LinestoDelete = 0
+   while ($ThreadList | Where-Object { -not $_.Handle.IsCompleted }) {
+      $Frame = $Frames[$FrameIndex % $Frames.Count]
+      if ($FrameIndex -gt 0 -and $LinestoDelete -gt 0) {
+         for ($d = 0; $d -lt $LinestoDelete; $d++) {
+            RichTextBoxDeleteLine $SystemWindowsControlsRichTextBox0 | Out-Null
+         }
+      }
+      $LinestoDelete = 0
+      $TaskName = @("Windows Update Status", "Application Update Status", "Application Update List", "GPU Latest Version Scan", "GPU Latest Version Scan")
+      for ($i = 0; $i -lt $ThreadList.Count; $i++) {
+         if (-not $ThreadList[$i].Handle.IsCompleted) {
+            RichTextBox $SystemWindowsControlsRichTextBox0 "$Frame SYSTEM START | $($TaskName[$i])" | Out-Null
+            $LinestoDelete++
+         }
+      }
+      Window | Out-Null
+      $FrameIndex++
+      Start-Sleep -Seconds 0.04
+   }
+   RichTextBoxDeleteLine $SystemWindowsControlsRichTextBox0 | Out-Null
+   RichTextBox $SystemWindowsControlsRichTextBox0 "Done" | Out-Null
+   Window  | Out-Null
+
+   $Results = [System.Collections.Generic.List[object]]::new()
+   foreach ($Thread in $ThreadList) {
+      $Result = $Thread.Instance.EndInvoke($Thread.Handle)
+      if ($Thread.Instance.HadErrors) {
+         $Thread.Instance.Streams.Error | ForEach-Object { Write-Warning "Thread error: $_" }
+      }
+      $Thread.Instance.Dispose()
+      $Results.Add($Result)
+   }
+   $ThreadList.Clear()
+   $WindowsUpdateStatus = $Results[0]
+   $WingetStatus = $Results[1]
+   $WingetAppList = $Results[2]
+   $GPUInsalledVersion = $Results[3]
+   $GPULatestVersion = $Results[4]
+   $WindowsUpdateNeeded = $false
+   $AppUpdateNeeded = $false
+   $GPUUpdateNeeded = $false
+
+   if ($WindowsUpdateStatus[0] -eq 0) {
+      RichTextBoxClear $SystemWindowsControlsRichTextBox1
+      RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+      Window | Out-Null
+   } elseif ($WindowsUpdateStatus[0] -eq 1) {
+      $RebootFlag = $true
+      RichTextBoxClear $SystemWindowsControlsRichTextBox1
+      RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+      Window | Out-Null
+   } else {
+      $WindowsUpdateNeeded = $true
+      RichTextBoxClear $SystemWindowsControlsRichTextBox1
+      RichTextBox $SystemWindowsControlsRichTextBox1 $WindowsUpdateStatus | Out-Null
       Window | Out-Null
    }
-   try {
-      $Result = Thread {
-         param($Function, $Parameter)
-         $FunctionBlock = [scriptblock]::Create($Function)
-         & $FunctionBlock $Parameter
-      } -ThreadPool $ThreadPool -Function ${function:AppGetStatus} -TaskName "ReSCAN Winget"
-      $Result2 = Thread {
-         param($Function, $Parameter)
-         $FunctionBlock = [scriptblock]::Create($Function)
-         & $FunctionBlock $Parameter
-      } -ThreadPool $ThreadPool -Function ${function:AppGetApplist} -TaskName "PreSCAN Winget Applist"
-      $AppList = $Result2
-      if ($null -eq $AppList -or $AppList.Count -eq 0) {
-         RichTextBox $SystemWindowsControlsRichTextBox0 ">> ReSCAN Winget                        | No Updates for Apps available" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         RichTextBox $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-         RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-         Window | Out-Null
-      } else {
-         RichTextBox $SystemWindowsControlsRichTextBox2 $Result -Clear | Out-Null
-         Window | Out-Null
-      }
-   } catch {
-      RichTextBox $SystemWindowsControlsRichTextBox0 ">> ReSCAN Winget                        | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
+
+   if ($null -eq $WingetAppList -or $WingetAppList.Count -eq 0) {
+      RichTextBoxClear $SystemWindowsControlsRichTextBox2
+      RichTextBox $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+      Window | Out-Null
+   } else {
+      $AppUpdateNeeded = $true
+      RichTextBoxClear $SystemWindowsControlsRichTextBox2
+      RichTextBox $SystemWindowsControlsRichTextBox2 $WingetStatus | Out-Null
       Window | Out-Null
    }
-   if ($RebootFlag -eq $true) {
-      $ResultQuestion = [System.Windows.MessageBox]::Show(
-      "It was detected that a Reboot is needed`n`nDo you want to reboot now ?",
-      "Reboot ?",
-      "YesNo",
-      "Question"
-      )
-      if ($ResultQuestion -eq "Yes") {
-         Restart-Computer -Force
-         exit
+
+   if (-not $GPULatestVersion -eq 0) {
+      if ($GPUInsalledVersion -eq $GPULatestVersion) {
+         RichTextBoxClear $SystemWindowsControlsRichTextBox3
+         RichTextBox $SystemWindowsControlsRichTextBox3 "No Updates for GPU available" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+         Window | Out-Null
+      } else {
+         $GPUUpdateNeeded = $true
+         RichTextBoxClear $SystemWindowsControlsRichTextBox3
+         RichTextBox $SystemWindowsControlsRichTextBox3 "Update to v$GPULatestVersion available" | Out-Null
+         Window | Out-Null
       }
-}
-}
-function AutomationActivate() {
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Activate Automation"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "______________________________________________________________________________"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "!!! if you move the CoreForge Folder please reactivate Automation !!!"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "This starts and runs CoreForge at your first Login of the Day"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Updates will be downloaded and installed automatically"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "You can still launch in non automated Mode through CoreForge.exe"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   Window  | Out-Null
-   $MainScriptPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\main.ps1"))
-   $TaskName = "CoreForge_Automation";
-   $TaskUser = "$env:USERDOMAIN\$env:USERNAME";
-   $TaskTrigger = New-ScheduledTaskTrigger -AtLogOn;
-   $TaskTrigger.UserId = $TaskUser;
-   $TaskTrigger.Delay = "PT0M";
-   $MainScriptPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\main.ps1"))
-   $TaskAction = New-ScheduledTaskAction -Execute "pwsh.exe" -Argument "-ExecutionPolicy Bypass -File `"$MainScriptPath`" -WindowStyle Hidden";
-   $TaskPrincipal = New-ScheduledTaskPrincipal -UserId $TaskUser -LogonType Interactive -RunLevel Highest;
-   $TaskSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopOnIdleEnd;
-   Register-ScheduledTask -TaskName $TaskName -Trigger $TaskTrigger -Action $TaskAction -Principal $TaskPrincipal -Settings $TaskSettings;
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Automation Activated" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-   Window  | Out-Null
-   
-}
-function AutomationDeactivate() {
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Deactivate Automation"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 "______________________________________________________________________________"  | Out-Null
-   RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-   Window  | Out-Null
-   Unregister-ScheduledTask -TaskName "CoreForge_Automation" -Confirm:$false
-   RichTextBox $SystemWindowsControlsRichTextBox0 "Automation Deactivated" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-   Window  | Out-Null
+   } else {
+      RichTextBoxClear $SystemWindowsControlsRichTextBox3
+      RichTextBox $SystemWindowsControlsRichTextBox3 "No Database Match for GPU" -Color ([System.Windows.Media.Brushes]::Yellow) | Out-Null
+      Window | Out-Null
+   }
 }

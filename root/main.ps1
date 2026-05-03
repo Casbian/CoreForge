@@ -2,7 +2,6 @@
    [switch]$EXELaunch
 )
 
-
 Import-Module "$PSScriptRoot\app\app.psm1"
 
 Import-Module "$PSScriptRoot\update\update.psm1"
@@ -16,6 +15,7 @@ if ($EXELaunch -eq $false) {
    }
 }
 
+Import-Module "$PSScriptRoot\automation\automation.psm1"
 Import-Module "$PSScriptRoot\gpu\gpu.psm1"
 Import-Module "$PSScriptRoot\network\network.psm1"
 Import-Module "$PSScriptRoot\richtextbox\richtextbox.psm1"
@@ -39,144 +39,144 @@ SystemLogoContinueOneFrame $SystemWindowsWindow $LoadingBar $LoadingBarFrames 1
 $UserName = [System.Environment]::GetEnvironmentVariable("USERNAME")
 SystemLogoContinueOneFrame $SystemWindowsWindow $LoadingBar $LoadingBarFrames 2
 
+$ThreadList = New-Object System.Collections.Generic.List[object]
 SystemLogoContinueOneFrame $SystemWindowsWindow $LoadingBar $LoadingBarFrames 3
+
+$ThreadWrapper = { param($Function, $Parameter); $FunctionBlock = [scriptblock]::Create($Function); & $FunctionBlock $Parameter }
 SystemLogoContinueOneFrame $SystemWindowsWindow $LoadingBar $LoadingBarFrames 4
+
+$ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:Network}))
+$ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:WindowsUpdateGetStatus}))
+$ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:AppGetStatus}))
+$ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:AppGetApplist}))
+$ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:GPUInstalledVersion}))
+$ThreadList.Add((Thread $ThreadWrapper -ThreadPool $ThreadPool -Function ${Function:GPULatestVersion}))
 SystemLogoContinueOneFrame $SystemWindowsWindow $LoadingBar $LoadingBarFrames 5
+
 SystemLogoContinueOneFrame $SystemWindowsWindow $LoadingBar $LoadingBarFrames 6
 SystemLogoContinueOneFrame $SystemWindowsWindow $LoadingBar $LoadingBarFrames 7
 
-$SystemWindowsWindow, $SystemWindowsControlsCanvas, $AutomationButton, $UpdateNowButton, $InfoButton, $SystemWindowsControlsRichTextBox0, $SystemWindowsControlsRichTextBox1, $SystemWindowsControlsRichTextBox2, $SystemWindowsControlsRichTextBox3, $AutomationCheck = System
+$SystemWindowsWindow, $SystemWindowsControlsCanvas, $AutomationButton, $UpdateNowButton, $InfoButton, $SystemWindowsControlsRichTextBox0, $SystemWindowsControlsRichTextBox1, $SystemWindowsControlsRichTextBox2, $SystemWindowsControlsRichTextBox3, $AutomationCheck = System $MyInvocation
+
+if (-not $AutomationCheck -and $EXELaunch -ne $true) {
+   $SystemWindowsWindow.Close()
+   $ThreadPool.Close()
+   $ThreadPool.Dispose()
+   exit
+}
+
 $AutomationButton.Active = $true
 $UpdateNowButton.Active = $true
 
-RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" -Clear | Out-Null
+RichTextBoxClear $SystemWindowsControlsRichTextBox0
+RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" | Out-Null
 RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
 RichTextBox $SystemWindowsControlsRichTextBox0 "Welcome $UserName" | Out-Null
 RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
 RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
 RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-RichTextBox $SystemWindowsControlsRichTextBox0 "System Startup"  | Out-Null
-RichTextBox $SystemWindowsControlsRichTextBox0 "______________________________________________________________________________"  | Out-Null
-RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-RichTextBox $SystemWindowsControlsRichTextBox0 "PreSCAN"  | Out-Null
-RichTextBox $SystemWindowsControlsRichTextBox0 ""  | Out-Null
-Window | Out-Null
+Window  | Out-Null
 
-
-
-try {
-   $Result = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:Network} -TaskName "PreSCAN Network"
-   if ($Result) {
-      RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN Network                      | $Result" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-      Window | Out-Null
-   } else {
-      $NetworkCancel = [System.Windows.MessageBox]::Show(
-      "No Network could be found",
-      "No Network",
-      "OK",
-      "Error"
-      )
-      if ($NetworkCancel -eq "OK") {
-         $SystemWindowsWindow.Close()
-         exit
+$Frames = @("⣷","⣯","⣟","⡿","⢿","⣻","⣽","⣾")
+$FrameIndex = 0
+$LinestoDelete = 0
+while ($ThreadList | Where-Object { -not $_.Handle.IsCompleted }) {
+   $Frame = $Frames[$FrameIndex % $Frames.Count]
+   if ($FrameIndex -gt 0 -and $LinestoDelete -gt 0) {
+      for ($d = 0; $d -lt $LinestoDelete; $d++) {
+         RichTextBoxDeleteLine $SystemWindowsControlsRichTextBox0 | Out-Null
       }
    }
-} catch {
-   RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN Network                      | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
-   Window | Out-Null
-}
-
-try {
-   $Result = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:WindowsUpdateGetStatus} -TaskName "PreSCAN Windows Update"
-   if ($Result -eq 0) {
-      RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN Windows Update               | No Windows Updates available" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-      Window | Out-Null
-   } elseif ($Result -eq 1) {
-      $RebootFlag = $true
-      RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN Windows Update               | No Windows Updates available - Reboot Required" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-      Window | Out-Null
-   } else {
-      RichTextBox $SystemWindowsControlsRichTextBox1 $Result -Clear | Out-Null
-      Window | Out-Null
+   $LinestoDelete = 0
+   $TaskName = @("Network", "Windows Update Status", "Application Update Status", "Application Update List", "GPU Latest Version Scan", "GPU Latest Version Scan")
+   for ($i = 0; $i -lt $ThreadList.Count; $i++) {
+      if (-not $ThreadList[$i].Handle.IsCompleted) {
+         RichTextBox $SystemWindowsControlsRichTextBox0 "$Frame SYSTEM START | $($TaskName[$i])" | Out-Null
+         $LinestoDelete++
+      }
    }
-} catch {
-   RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN Windows Update               | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
    Window | Out-Null
+   $FrameIndex++
+   Start-Sleep -Seconds 0.04
 }
 
-
-try {
-   $Result = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:AppGetStatus} -TaskName "PreSCAN Winget"
-   $Result2 = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:AppGetApplist} -TaskName "PreSCAN Winget Applist"
-   $AppList = $Result2
-   if ($null -eq $AppList -or $AppList.Count -eq 0) {
-      RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN Winget                       | No Updates for Apps available" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
-      Window | Out-Null
-   } else {
-      RichTextBox $SystemWindowsControlsRichTextBox2 $Result -Clear | Out-Null
-      Window | Out-Null
+$Results = [System.Collections.Generic.List[object]]::new()
+foreach ($Thread in $ThreadList) {
+   $Result = $Thread.Instance.EndInvoke($Thread.Handle)
+   if ($Thread.Instance.HadErrors) {
+      $Thread.Instance.Streams.Error | ForEach-Object { Write-Warning "Thread error: $_" }
    }
-} catch {
-   RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN Winget                       | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
+   $Thread.Instance.Dispose()
+   $Results.Add($Result)
+}
+$ThreadList.Clear()
+
+$Network = $Results[0]
+$WindowsUpdateStatus = $Results[1]
+$WingetStatus = $Results[2]
+$WingetAppList = $Results[3]
+$GPUInsalledVersion = $Results[4]
+$GPULatestVersion = $Results[5]
+$WindowsUpdateNeeded = $false
+$AppUpdateNeeded = $false
+$GPUUpdateNeeded = $false
+
+if (-not $Network) {
+   $NetworkCancel = [System.Windows.MessageBox]::Show(
+   "No Network could be found",
+   "No Network",
+   "OK",
+   "Error"
+   )
+   if ($NetworkCancel -eq "OK") {
+      $SystemWindowsWindow.Close()
+      exit
+   }
+}
+
+if ($WindowsUpdateStatus[0] -eq 0) {
+   RichTextBoxClear $SystemWindowsControlsRichTextBox1
+   RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+   Window | Out-Null
+} elseif ($WindowsUpdateStatus[0] -eq 1) {
+   $RebootFlag = $true
+   RichTextBoxClear $SystemWindowsControlsRichTextBox1
+   RichTextBox $SystemWindowsControlsRichTextBox1 "No Windows Updates available - Reboot Required" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+   Window | Out-Null
+} else {
+   $WindowsUpdateNeeded = $true
+   RichTextBoxClear $SystemWindowsControlsRichTextBox1
+   RichTextBox $SystemWindowsControlsRichTextBox1 $WindowsUpdateStatus | Out-Null
    Window | Out-Null
 }
 
-try {
-   $Result = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:GPUInstalledVersion} -TaskName "PreSCAN GPU"
-   $Result2 = Thread {
-      param($Function, $Parameter)
-      $FunctionBlock = [scriptblock]::Create($Function)
-      & $FunctionBlock $Parameter
-   } -ThreadPool $ThreadPool -Function ${function:GPULatestVersion} -TaskName "PreSCAN GPU Update"
-   $GPUInsalledVersion = $Result
-   $GPULatestVersion = $Result2
+if ($null -eq $WingetAppList -or $WingetAppList.Count -eq 0) {
+   RichTextBoxClear $SystemWindowsControlsRichTextBox2
+   RichTextBox $SystemWindowsControlsRichTextBox2 "No Updates for Apps available" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
+   Window | Out-Null
+} else {
+   $AppUpdateNeeded = $true
+   RichTextBoxClear $SystemWindowsControlsRichTextBox2
+   RichTextBox $SystemWindowsControlsRichTextBox2 $WingetStatus | Out-Null
+   Window | Out-Null
+}
+
+if (-not $GPULatestVersion -eq 0) {
    if ($GPUInsalledVersion -eq $GPULatestVersion) {
-      RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN GPU Update                   | No Updates for GPU available" -RemoveLast -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox3 "No Updates for GPU available" -Clear -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
-      RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
+      RichTextBoxClear $SystemWindowsControlsRichTextBox3
+      RichTextBox $SystemWindowsControlsRichTextBox3 "No Updates for GPU available" -Color ([System.Windows.Media.Brushes]::LightGreen) | Out-Null
       Window | Out-Null
    } else {
-      RichTextBox $SystemWindowsControlsRichTextBox3 "Update to v$GPULatestVersion available" -Clear | Out-Null
+      $GPUUpdateNeeded = $true
+      RichTextBoxClear $SystemWindowsControlsRichTextBox3
+      RichTextBox $SystemWindowsControlsRichTextBox3 "Update to v$GPULatestVersion available" | Out-Null
       Window | Out-Null
-   }   
-} catch {
-   RichTextBox $SystemWindowsControlsRichTextBox0 ">> PreSCAN GPU Update                   | ERROR" -RemoveLast -Color ([System.Windows.Media.Brushes]::Red) | Out-Null
+   }
+} else {
+   RichTextBoxClear $SystemWindowsControlsRichTextBox3
+   RichTextBox $SystemWindowsControlsRichTextBox3 "No Database Match for GPU" -Color ([System.Windows.Media.Brushes]::Yellow) | Out-Null
    Window | Out-Null
 }
-
-
-
-
-
-
-
 
 if ($RebootFlag -eq $true) {
    $ResultQuestion = [System.Windows.MessageBox]::Show(
@@ -192,13 +192,14 @@ if ($RebootFlag -eq $true) {
 }
 
 if ($EXELaunch -eq $true) {
-   RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" -Clear | Out-Null
+   RichTextBoxClear $SystemWindowsControlsRichTextBox0
+   RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" | Out-Null
    RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
    RichTextBox $SystemWindowsControlsRichTextBox0 "Welcome $UserName" | Out-Null
    RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
    Window | Out-Null
-   $AutomationButton.Active = $false
    $UpdateNowButton.Active = $false
+   $AutomationButton.Active = $false
    $SystemWindowsWindow.Hide()
    $SystemWindowsWindow.ShowDialog()
    $ThreadPool.Close()
@@ -207,11 +208,13 @@ if ($EXELaunch -eq $true) {
 }
 
 if ($AutomationCheck) {
-   RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" -Clear | Out-Null
+   RichTextBoxClear $SystemWindowsControlsRichTextBox0
+   RichTextBox $SystemWindowsControlsRichTextBox0 "SYSTEM v$CurrentVersion" | Out-Null
    RichTextBox $SystemWindowsControlsRichTextBox0 "" | Out-Null
    RichTextBox $SystemWindowsControlsRichTextBox0 "Welcome $UserName" | Out-Null
    RichTextBox $SystemWindowsControlsRichTextBox0 "____________________________________________________________________________________________________________________________________________________________" | Out-Null
-   UpdateRun $AppList
+   Window | Out-Null
+   SystemStartUpdateRun $WingetAppList $MyInvocation $WindowsUpdateNeeded $AppUpdateNeeded $GPUUpdateNeeded
    $SystemWindowsWindow.Hide()
    $SystemWindowsWindow.Show()
    $ThreadPool.Close()

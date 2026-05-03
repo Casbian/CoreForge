@@ -1,4 +1,4 @@
-function Network() {
+﻿function Network() {
     try {
         $NetAdapter= Get-NetAdapter | Sort-Object LinkSpeed -Descending | Select-Object -First 1 -ExpandProperty Name
         Enable-NetAdapter $NetAdapter

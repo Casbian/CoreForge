@@ -2,6 +2,6 @@
        -title "CoreForge" `
        -description "Update Automation Suite" `
        -copyright "© 2026 Kai Erich-Reineke" `
-       -version "1.0.0" `
+       -version "1.1.3" `
        -icon "$PSScriptRoot\..\assets\Icon.ico" `
        -noConsole

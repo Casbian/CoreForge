@@ -1,1 +1,1 @@
-. "$PSScriptRoot\gpu.ps1"
+﻿. "$PSScriptRoot\gpu.ps1"

@@ -4,12 +4,21 @@
 <h1 align="center">CoreForge</h1>
 <p align="center">
 Normal and Automatic Launch Mode<br>
-Windows Updates | Reboot Suppression Prompt<br>
+Windows Updates<br>
 Application Updates<br>
+Nvidia GPU Driver Update<br>
+Reboot Suppression Prompt<br>
 Device Information<br>
+More Soon™<br><br>
+Recent Patches<br>
 _________________________<br>
-GPU Driver Implementation Soon™<br>
-More Settings Soon™<br>
+Self-Update Logic Rework<br>
+Async Threading<br>
+Logic to skip Updates if not needed<br>
+Main and Update Script Flow updated<br>
+Parts of Code restructured for Maintenance<br>
+WindowsUpdate Loop due to Timeout of internal Service<br>
+Bug Fixes<br>
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-blue?style=flat-square" alt="Platform" />

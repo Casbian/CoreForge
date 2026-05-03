@@ -1,1 +1,1 @@
-. "$PSScriptRoot\network.ps1"
+﻿. "$PSScriptRoot\network.ps1"
