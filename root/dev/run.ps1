@@ -1,6 +1,6 @@
 ﻿if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     try {
-        Start-Process winget.exe -ArgumentList "upgrade --id Microsoft.Powershell --silent --accept-package-agreements --accept-source-agreements" -WindowStyle Hidden -Wait
+        Start-Process winget.exe -ArgumentList "upgrade --id Microsoft.Powershell --silent --accept-package-agreements --accept-source-agreements" -Wait -WindowStyle Hidden 
         $Path = Join-Path (Split-Path ([System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName)) "root\main.ps1"
         Start-Process pwsh.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File `"$Path`" -EXELaunch" -WindowStyle Hidden
         exit

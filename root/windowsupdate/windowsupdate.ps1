@@ -66,12 +66,11 @@ function WindowsUpdateUpdateRun() {
         $StringBuilder = New-Object System.Text.StringBuilder
         $Output = Get-WindowsUpdate -AcceptAll -Install -Verbose -IgnoreReboot 4>&1
         if ($?) {
-            break
+            foreach ($Line in $Output) {
+                $TrimmedLine = $Line.Message -replace 'Please wait\.\.\.', ''
+                $StringBuilder.AppendLine($TrimmedLine) | Out-Null
+            }
+            return $StringBuilder.ToString().Trim()
         }
-        foreach ($Line in $Output) {
-            $TrimmedLine = $Line.Message -replace 'Please wait\.\.\.', ''
-            $StringBuilder.AppendLine($TrimmedLine) | Out-Null
-        }
-        return $StringBuilder.ToString().Trim()
     }
 }

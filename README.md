@@ -9,16 +9,8 @@ Application Updates<br>
 Nvidia GPU Driver Update<br>
 Reboot Suppression Prompt<br>
 Device Information<br>
-More Soon™<br><br>
-Recent Patches<br>
-_________________________<br>
-Self-Update Logic Rework<br>
-Async Threading<br>
-Logic to skip Updates if not needed<br>
-Main and Update Script Flow updated<br>
-Parts of Code restructured for Maintenance<br>
-WindowsUpdate Loop due to Timeout of internal Service<br>
-Bug Fixes<br>
+_________________________<br><br>
+More Soon™<br>
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-blue?style=flat-square" alt="Platform" />
