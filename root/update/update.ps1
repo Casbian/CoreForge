@@ -15,6 +15,7 @@
                   Remove-Item $TempExtract -Recurse -Force
                }
                Start-Process pwsh.exe -ArgumentList "-Command Expand-Archive -Path '$TempZip' -DestinationPath '$TempExtract' -Force" -Wait -WindowStyle Hidden
+               $UpdateScriptPath = "$InstallDir\CoreForge_update.ps1"
                $UpdateScript = @"
 Get-ChildItem -Path "$InstallDir" -Exclude "CoreForge_update.zip","CoreForge_update","CoreForge_update.ps1" | Remove-Item -Recurse -Force
 `$Source = Get-ChildItem "$TempExtract" | Where-Object { `$_.PSIsContainer } | Select-Object -First 1
@@ -24,7 +25,6 @@ Remove-Item "$TempExtract" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$UpdateScriptPath" -Force -ErrorAction SilentlyContinue
 Start-Process "$InstallDir\CoreForge.exe"
 "@
-               $UpdateScriptPath = "$InstallDir\CoreForge_update.ps1"
                $UpdateScript | Out-File -FilePath $UpdateScriptPath -Encoding utf8BOM
                Start-Process pwsh.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$UpdateScriptPath`"" -WindowStyle Hidden
                exit
